@@ -74,7 +74,7 @@ and e = private
 and exp = private
   {e: e; ety: ty option; espan: Span.t; etag: int; ehkey: int}
 
-and branches = (pattern * exp) list
+and branches = ((pattern list) * exp) list
 
 and func = {arg: var; argty: ty option; resty: ty option; body: exp}
 
@@ -201,6 +201,8 @@ val compare_values : value -> value -> int
 val compare_exps : exp -> exp -> int
 
 val get_inner_type : ty -> ty
+
+val equal_tys : ty -> ty -> bool
 
 val free : Var.t BatSet.PSet.t -> exp -> Var.t BatSet.PSet.t
 

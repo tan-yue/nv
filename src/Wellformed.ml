@@ -87,6 +87,41 @@ and pattern_vars (p: pattern) =
         VarSet.empty ps
   | POption (Some p) -> pattern_vars p
 
+let or_pattern_wf ps =
+  let rec aux ps =
+    match ps with
+    | [] | [_] -> true
+    | p1 :: p2 :: ps -> (VarSet.equal p1 p2) && aux ps
+  in aux (List.map pattern_vars ps)
+
+let rec check_or_pattern info e =
+  match e.e with
+  | EVar _ | EVal _ -> ()
+  | EOp (_, es) ->
+     List.iter (check_or_pattern info) es
+  | EFun f ->
+     check_or_pattern info f.body
+  | EApp (e1, e2) ->
+     check_or_pattern info e1;
+     check_or_pattern info e2
+  | EIf (e1, e2, e3) ->
+     check_or_pattern info e1;
+     check_or_pattern info e2;
+     check_or_pattern info e3
+  | ELet (_, e1, e2) ->
+     check_or_pattern info e1;
+     check_or_pattern info e2
+  | ETuple es -> List.iter (check_or_pattern info) es
+  | ESome e -> check_or_pattern info e
+  | EMatch (e, bs) ->
+     List.iter (fun ps -> if or_pattern_wf ps then ()
+                          else
+                            Console.error_position info e.espan
+                                                   "Patterns must bind same variables") bs
+  | ETy (e, _) -> check_or_pattern info e
+
+let check_or_patterns info _ (e: exp) = check_or_pattern info e
+                                                                      
 let check_closures info _ (e: exp) =
   match e.e with
   | EOp (MMapFilter, [e1; e2; e3]) -> (
@@ -102,4 +137,5 @@ let check_closures info _ (e: exp) =
 
 let check info (ds: declarations) : unit =
   Visitors.iter_exp_decls (check_types info) ds ;
-  Visitors.iter_exp_decls (check_closures info) ds
+  Visitors.iter_exp_decls (check_closures info) ds;
+  Visitors.iter_exp_decls (check_or_patterns info) ds

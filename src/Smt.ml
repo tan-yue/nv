@@ -388,9 +388,11 @@ and encode_branches_z3 descr env arr name bs (t: ty) =
 and encode_branches_aux_z3 descr env arr name bs accze (t: ty) =
   match bs with
   | [] -> accze
-  | (p, e) :: bs ->
+  | (ps, e) :: bs ->
       let ze = encode_exp_z3 descr env arr e in
-      let zp = encode_pattern_z3 descr env arr name p t in
+      let zp = Boolean.mk_or env.ctx
+                             (List.map (fun (p : pattern) ->
+                                  encode_pattern_z3 descr env arr name p t) ps) in
       let ze =
         if arr.lift then
           Z3Array.mk_map env.ctx
@@ -400,7 +402,7 @@ and encode_branches_aux_z3 descr env arr name bs accze (t: ty) =
       in
       encode_branches_aux_z3 descr env arr name bs ze t
 
-and encode_pattern_z3 descr env arr zname p (t: ty) =
+and encode_pattern_z3 descr env arr zname (p : pattern) (t: ty) =
   let ty = get_inner_type t in
   match (p, ty) with
   | PWild, _ ->

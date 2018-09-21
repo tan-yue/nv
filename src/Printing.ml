@@ -217,8 +217,9 @@ and exp_to_string_p prec e =
   in
   if p > prec then "(" ^ s ^ ")" else s
 
-and branch_to_string prec (p, e) =
-  " | " ^ pattern_to_string p ^ " -> " ^ exp_to_string_p prec e
+and branch_to_string prec (ps, e) =
+  (List.fold_left (fun acc p -> " | " ^ pattern_to_string p) "" ps) ^
+    " -> " ^ exp_to_string_p prec e
 
 and branches_to_string prec bs =
   match bs with

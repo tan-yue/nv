@@ -78,7 +78,7 @@ and e =
 
 and exp = {e: e; ety: ty option; espan: Span.t; etag: int; ehkey: int}
 
-and branches = (pattern * exp) list
+and branches = ((pattern list) * exp) list
 
 and func = {arg: var; argty: ty option; resty: ty option; body: exp}
 
@@ -172,7 +172,7 @@ and show_func f =
     (show_exp f.body)
 
 and show_branch (p, e) =
-  Printf.sprintf "(%s,%s)" (show_pattern p) (show_exp e)
+  Printf.sprintf "(%s,%s)" (show_list show_pattern p) (show_exp e)
 
 and show_pattern p =
   match p with
@@ -334,7 +334,7 @@ and equal_branches ~cmp_meta bs1 bs2 =
   | [], [] -> true
   | [], _ | _, [] -> false
   | (p1, e1) :: bs1, (p2, e2) :: bs2 ->
-      equal_patterns p1 p2
+      equal_patterns_list p1 p2
       && equal_exps ~cmp_meta e1 e2
       && equal_branches ~cmp_meta bs1 bs2
 
@@ -488,7 +488,7 @@ and hash_es ~hash_meta es =
 
 and hash_branches ~hash_meta bs =
   List.fold_left
-    (fun acc (p, e) -> acc + hash_pattern p + hash_exp ~hash_meta e)
+    (fun acc (p, e) -> acc + hash_patterns p + hash_exp ~hash_meta e)
     0 bs
 
 and hash_pattern p =
@@ -721,7 +721,7 @@ let rec get_inner_type t : ty =
   match t with TVar {contents= Link t} -> get_inner_type t | _ -> t
 
 open BatSet
-
+   
 let rec free (seen: Var.t PSet.t) (e: exp) : Var.t PSet.t =
   match e.e with
   | EVar v ->
@@ -745,7 +745,8 @@ let rec free (seen: Var.t PSet.t) (e: exp) : Var.t PSet.t =
   | EMatch (e, bs) ->
       let bs =
         List.fold_left
-          (fun set (p, e) ->
+          (fun set (ps, e) ->
+            let p = List.hd ps in
             let seen = PSet.union seen (pattern_vars p) in
             PSet.union set (free seen e) )
           (PSet.create Var.compare)
@@ -764,7 +765,7 @@ and pattern_vars p =
         (PSet.create Var.compare)
         ps
   | POption (Some p) -> pattern_vars p
-
+                      
 (* Memoization *)
 
 module type MEMOIZER = sig
@@ -1363,7 +1364,7 @@ module BddFunc = struct
             let _, x =
               List.fold_left
                 (fun (env, x) (p, e) ->
-                  let env, cond = eval_branch env bddf p in
+                  let env, cond = eval_branch env bddf (List.hd p) in
                   (env, ite cond (eval env e) x) )
                 (env, x) bs
             in

@@ -195,7 +195,7 @@ expr:
                                           exp (elet id e $6) span }
     | LET LPAREN patterns RPAREN EQ expr IN expr
                                         { let p = tuple_pattern $3 in 
-                                          let e = ematch $6 [(p,$8)] in 
+                                          let e = ematch $6 [([p],$8)] in 
                                           let span = Span.extend $1 $8.espan in 
                                           exp e span }
     | IF expr THEN expr ELSE expr       { exp (eif $2 $4 $6) (Span.extend $1 $6.espan) }
@@ -318,8 +318,13 @@ patterns:
     | pattern COMMA patterns            { $1::$3 }
 ;
 
+or_patterns:
+    | pattern                           { [$1] }
+    | pattern BAR patterns            { $1::$3 }
+;
+
 branch:
-    | BAR pattern ARROW expr            { ($2, $4) }
+    | BAR or_patterns ARROW expr            { ($2, $4) }
 ;
 
 branches:

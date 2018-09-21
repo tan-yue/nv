@@ -75,10 +75,9 @@ and matches_list ps vs =
 let rec match_branches branches v =
   match branches with
   | [] -> None
-  | (p, e) :: branches ->
-    match matches p v with
-    | Some env -> Some (env, e)
-    | None -> match_branches branches v
+  | (ps, e) :: branches ->
+     try Some (BatList.find_map (fun p -> matches p v) ps, e)
+     with | Not_found -> match_branches branches v
 
 module ExpMap = Map.Make (struct
   type t = exp

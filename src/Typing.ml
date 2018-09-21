@@ -573,18 +573,28 @@ and infer_values info env vs =
 and infer_branches i info env exp tmatch bs =
   match bs with
   | [] -> failwith "internal error (infer branches)"
-  | [(p, e)] ->
-      let env2 = infer_pattern (i + 1) info env exp tmatch p in
-      let e, t = infer_exp (i + 1) info env2 e |> textract in
-      ([(p, e)], t)
-  | (p, e) :: bs ->
-      let bs, tbranch =
-        infer_branches (i + 1) info env exp tmatch bs
-      in
-      let env2 = infer_pattern (i + 1) info env exp tmatch p in
-      let e, t = infer_exp (i + 1) info env2 e |> textract in
-      unify info e t tbranch ;
-      ((p, e) :: bs, t)
+  | [(ps, e)] ->
+     let env2 = infer_pattern (i + 1) info env exp tmatch (List.hd ps) in
+     List.iter (fun pnext ->
+         let env_next = infer_pattern (i + 1) info env exp tmatch pnext in
+         if Env.equal Syntax.equal_tys env2 env_next then
+           ()
+         else Console.error "Types in or-pattern do not match") (List.tl ps);
+     let e, t = infer_exp (i + 1) info env2 e |> textract in
+     ([(ps, e)], t)
+  | (ps, e) :: bs ->
+     let bs, tbranch =
+       infer_branches (i + 1) info env exp tmatch bs
+     in
+     let env2 = infer_pattern (i + 1) info env exp tmatch (List.hd ps) in
+     List.iter (fun pnext ->
+         let env_next = infer_pattern (i + 1) info env exp tmatch pnext in
+         if Env.equal Syntax.equal_tys env2 env_next then
+           ()
+         else Console.error "Types in or-pattern do not match") (List.tl ps);
+     let e, t = infer_exp (i + 1) info env2 e |> textract in
+     unify info e t tbranch ;
+     ((ps, e) :: bs, t)
 
 and infer_pattern i info env e tmatch p =
   valid_pat p ;
