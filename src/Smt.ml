@@ -378,10 +378,10 @@ and encode_op_z3 descr env f arr es =
 and encode_branches_z3 descr env arr name bs (t: ty) =
   match List.rev bs with
   | [] -> failwith "internal error (encode_branches)"
-  | (p, e) :: bs ->
+  | (ps, e) :: bs ->
       let ze = encode_exp_z3 descr env arr e in
       (* we make the last branch fire no matter what *)
-      let _ = encode_pattern_z3 descr env arr name p t in
+      let _ = List.iter (fun p -> ignore(encode_pattern_z3 descr env arr name p t)) ps in
       encode_branches_aux_z3 descr env arr name (List.rev bs) ze t
 
 (* I'm assuming here that the cases are exhaustive *)
@@ -433,68 +433,68 @@ and encode_pattern_z3 descr env arr zname (p : pattern) (t: ty) =
       else
         let const = mk_int_u32 env.ctx i in
         Boolean.mk_eq env.ctx zname const
-  | PTuple ps, TTuple ts -> (
-    match (ps, ts) with
-    | [p], [t] -> encode_pattern_z3 descr env arr zname p t
-    | ps, ts ->
-        let znames =
-          List.mapi
-            (fun i t ->
-              let sort = ty_to_sort env.ctx t |> arr.f in
-              ( Expr.mk_const_s env.ctx
-                  (Printf.sprintf "elem%d" i |> create_fresh descr)
-                  sort
-              , sort
-              , t ) )
-            ts
-        in
-        let tup_sort = ty_to_sort env.ctx ty in
-        let fs = Datatype.get_accessors tup_sort |> List.concat in
-        List.combine znames fs
-        |> List.iter (fun ((elem, _, _), f) ->
-               let e =
-                 if arr.lift then Z3Array.mk_map env.ctx f [zname]
-                 else Expr.mk_app env.ctx f [zname]
-               in
-               add env.solver [Boolean.mk_eq env.ctx elem e] ) ;
-        let matches =
-          List.map
-            (fun (p, (zname, _, ty)) ->
-              encode_pattern_z3 descr env arr zname p ty )
-            (List.combine ps znames)
-        in
-        let f acc e =
-          if arr.lift then
-            Z3Array.mk_map env.ctx (and_f env.ctx) [acc; e]
-          else Boolean.mk_and env.ctx [acc; e]
-        in
-        let b = mk_bool env.ctx true in
-        let base = if arr.lift then arr.make b else b in
-        List.fold_left f base matches )
+  | PTuple ps, TTuple ts ->
+     (match (ps, ts) with
+      | [p], [t] -> encode_pattern_z3 descr env arr zname p t
+      | ps, ts ->
+         let znames =
+           List.mapi
+             (fun i t ->
+               let sort = ty_to_sort env.ctx t |> arr.f in
+               ( Expr.mk_const_s env.ctx
+                                 (Printf.sprintf "elem%d" i |> create_fresh descr)
+                                 sort
+               , sort
+               , t ) )
+             ts
+         in
+         let tup_sort = ty_to_sort env.ctx ty in
+         let fs = Datatype.get_accessors tup_sort |> List.concat in
+         List.combine znames fs
+         |> List.iter (fun ((elem, _, _), f) ->
+                let e =
+                  if arr.lift then Z3Array.mk_map env.ctx f [zname]
+                  else Expr.mk_app env.ctx f [zname]
+                in
+                add env.solver [Boolean.mk_eq env.ctx elem e] ) ;
+         let matches =
+           List.map
+             (fun (p, (zname, _, ty)) ->
+               encode_pattern_z3 descr env arr zname p ty )
+             (List.combine ps znames)
+         in
+         let f acc e =
+           if arr.lift then
+             Z3Array.mk_map env.ctx (and_f env.ctx) [acc; e]
+           else Boolean.mk_and env.ctx [acc; e]
+         in
+         let b = mk_bool env.ctx true in
+         let base = if arr.lift then arr.make b else b in
+         List.fold_left f base matches )
   | POption None, TOption _ ->
-      let opt_sort = ty_to_sort env.ctx t in
-      let f = Datatype.get_recognizers opt_sort |> List.hd in
-      if arr.lift then Z3Array.mk_map env.ctx f [zname]
-      else Expr.mk_app env.ctx f [zname]
+     let opt_sort = ty_to_sort env.ctx t in
+     let f = Datatype.get_recognizers opt_sort |> List.hd in
+     if arr.lift then Z3Array.mk_map env.ctx f [zname]
+     else Expr.mk_app env.ctx f [zname]
   | POption (Some p), TOption t ->
-      let new_name = create_fresh descr "option" in
-      let za =
-        Expr.mk_const_s env.ctx new_name
-          (ty_to_sort env.ctx t |> arr.f)
-      in
-      let opt_sort = ty_to_sort env.ctx ty in
-      let get_val =
-        Datatype.get_accessors opt_sort |> List.concat |> List.hd
-      in
-      let is_some = List.nth (Datatype.get_recognizers opt_sort) 1 in
-      let e =
-        if arr.lift then Z3Array.mk_map env.ctx get_val [zname]
-        else Expr.mk_app env.ctx get_val [zname]
-      in
-      add env.solver [Boolean.mk_eq env.ctx za e] ;
-      let zp = encode_pattern_z3 descr env arr za p t in
-      if arr.lift then
-        let e = Z3Array.mk_map env.ctx is_some [zname] in
+     let new_name = create_fresh descr "option" in
+     let za =
+       Expr.mk_const_s env.ctx new_name
+                       (ty_to_sort env.ctx t |> arr.f)
+     in
+     let opt_sort = ty_to_sort env.ctx ty in
+     let get_val =
+       Datatype.get_accessors opt_sort |> List.concat |> List.hd
+     in
+     let is_some = List.nth (Datatype.get_recognizers opt_sort) 1 in
+     let e =
+       if arr.lift then Z3Array.mk_map env.ctx get_val [zname]
+       else Expr.mk_app env.ctx get_val [zname]
+     in
+     add env.solver [Boolean.mk_eq env.ctx za e] ;
+     let zp = encode_pattern_z3 descr env arr za p t in
+     if arr.lift then
+       let e = Z3Array.mk_map env.ctx is_some [zname] in
         Z3Array.mk_map env.ctx (and_f env.ctx) [e; zp]
       else
         Boolean.mk_and env.ctx
