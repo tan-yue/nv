@@ -206,10 +206,6 @@ val equal_tys : ty -> ty -> bool
 
 val free : Var.t BatSet.PSet.t -> exp -> Var.t BatSet.PSet.t
 
-val show_exp : exp -> string
-
-val show_e : e -> string
-
 module type MEMOIZER = sig
   type t
 

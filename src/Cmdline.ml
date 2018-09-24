@@ -35,7 +35,7 @@ let default =
   ; memoize = false
   ; no_caching=false
   ; no_cutoff=false
-  ; inline=false}
+  ; inline=false }
 
 let cfg = ref default 
 

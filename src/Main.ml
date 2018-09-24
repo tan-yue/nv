@@ -99,7 +99,7 @@ let run_simulator cfg info decls =
         print_newline ()
   with Srp.Require_false ->
     Console.error "required conditions not satisfied"
-       
+
 let main =
   let cfg, rest = argparse default "nv" Sys.argv in
   Cmdline.set_cfg cfg ;
