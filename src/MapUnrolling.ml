@@ -85,7 +85,7 @@ let rec tuplify_exp tymap e : exp =
             let ps =
               if List.length ps = 1 then List.hd ps else PTuple ps
             in
-            ematch (tuplify_exp tymap e1) [(ps, es)] )
+            ematch (tuplify_exp tymap e1) [([ps], es)] )
     | MGet, [e1; e2] -> (
         (* m[e] --> m.i_e  if known index else m.0 *)
         let ty = oget e1.ety in
@@ -109,7 +109,7 @@ let rec tuplify_exp tymap e : exp =
             let ps =
               if List.length ps = 1 then List.hd ps else PTuple ps
             in
-            ematch (tuplify_exp tymap e1) [(ps, e)] )
+            ematch (tuplify_exp tymap e1) [([ps], e)] )
     | MMap, [e1; e2] ->
         (* map f m --> (f m.0, f m.1, ...) *)
         mk_map tymap e e1 e2 ~filter:None
@@ -144,7 +144,7 @@ let rec tuplify_exp tymap e : exp =
             in
             ematch
               (etuple [tuplify_exp tymap e2; tuplify_exp tymap e3])
-              [(PTuple [ps1; ps2], es)]
+              [([PTuple [ps1; ps2]], es)]
         | _ -> failwith "internal error (tuplify_exp: mmerge)" )
     | _ -> failwith "internal error (tuplify_exp: no match)" )
   | EFun f ->
@@ -190,7 +190,7 @@ and mk_map tymap e e1 e2 ~filter =
       let ps =
         if List.length ps = 1 then List.hd ps else PTuple ps
       in
-      ematch (tuplify_exp tymap e2) [(ps, es)]
+      ematch (tuplify_exp tymap e2) [([ps], es)]
 
 (* no way to pattern match a map, so just keep patterns *)
 and tuplify_branches tymap bs =

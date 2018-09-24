@@ -72,7 +72,7 @@ let rec check_closure info (x: VarSet.t) (e: exp) =
       check_closure info x e ;
       List.iter
         (fun (p, e) ->
-          let set = pattern_vars p in
+          let set = pattern_vars (List.hd p) in
           check_closure info (VarSet.union set x) e )
         bs
   | ETy (e, _) -> check_closure info x e
@@ -87,11 +87,11 @@ and pattern_vars (p: pattern) =
         VarSet.empty ps
   | POption (Some p) -> pattern_vars p
 
-let or_pattern_wf ps =
+let or_pattern_wf (ps : pattern list) =
   let rec aux ps =
     match ps with
     | [] | [_] -> true
-    | p1 :: p2 :: ps -> (VarSet.equal p1 p2) && aux ps
+    | p1 :: p2 :: ps -> (VarSet.equal p1 p2) && aux (p2 :: ps)
   in aux (List.map pattern_vars ps)
 
 let rec check_or_pattern info e =
@@ -114,7 +114,7 @@ let rec check_or_pattern info e =
   | ETuple es -> List.iter (check_or_pattern info) es
   | ESome e -> check_or_pattern info e
   | EMatch (e, bs) ->
-     List.iter (fun ps -> if or_pattern_wf ps then ()
+     List.iter (fun (ps,_) -> if or_pattern_wf ps then ()
                           else
                             Console.error_position info e.espan
                                                    "Patterns must bind same variables") bs

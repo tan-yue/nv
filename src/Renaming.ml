@@ -5,7 +5,7 @@ let map_back bmap x y =
   bmap := StringMap.add (Var.to_string y) (Var.to_string x) !bmap
 
 let fresh x = Var.fresh (Var.to_string x)
-
+                      
 let rec update_pattern (env: Var.t Env.t) (p: pattern) :
     pattern * Var.t Env.t =
   match p with
@@ -24,6 +24,16 @@ let rec update_pattern (env: Var.t Env.t) (p: pattern) :
 and add_pattern (env, ps) p =
   let p', env' = update_pattern env p in
   (env', p' :: ps)
+
+let rec alpha_rename_pattern (env: Var.t Env.t) (p: pattern) : pattern =
+  match p with
+  | PWild | PBool _ | PUInt32 _ -> p
+  | PVar x ->
+     PVar (Env.lookup env x)
+  | PTuple ps ->
+     PTuple (List.map (alpha_rename_pattern env) ps)
+  | POption None -> p
+  | POption (Some p) -> POption (Some (alpha_rename_pattern env p))
 
 let rec alpha_convert_exp (env: Var.t Env.t) (e: exp) =
   (* Printf.printf "expr: %s\n" (Printing.exp_to_string e);
@@ -59,9 +69,11 @@ let rec alpha_convert_exp (env: Var.t Env.t) (e: exp) =
   | EMatch (e, bs) ->
       let bs' =
         List.map
-          (fun (p, e) ->
-            let p, env = update_pattern env p in
-            (p, alpha_convert_exp env e) )
+          (fun (ps, e) ->
+            let p, env = update_pattern env (List.hd ps) in
+            (* rename or-patterns based on renaming of first pattern *)
+            let ptl = List.map (alpha_rename_pattern env) (List.tl ps) in
+            (p :: ptl, alpha_convert_exp env e) )
           bs
       in
       ematch (alpha_convert_exp env e) bs' |> wrap e

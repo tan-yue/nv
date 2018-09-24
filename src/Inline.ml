@@ -52,9 +52,10 @@ let rec substitute x e1 e2 =
       eop op (List.map (fun e -> substitute x e e2) es) |> wrap e1
   | EVal _ -> e1
 
-and substitute_pattern x e2 (p, e) =
-  if has_var p x then (p, e) else (p, substitute x e e2)
-
+and substitute_pattern x e2 (ps, e) =
+  (* Or-patterns have the same bound variables *)
+  if has_var (List.hd ps) x then (ps, e) else (ps, substitute x e e2)
+  
 let rec inline_app env e1 e2 : exp =
   let exp =
     match e1.e with
@@ -125,9 +126,10 @@ and inline_exp (env: exp Env.t) (e: exp) : exp =
 
 (* TODO: right now this is assuming that patterns won't contain functions
    this will fail for example with an expression like:  Some (fun v -> v) *)
-and inline_branch env (p, e) =
-  let env' = remove_all env p in
-  (p, inline_exp env' e)
+and inline_branch env (ps, e) =
+  (* Or-patterns have the same bound variables *)
+  let env' = remove_all env (List.hd ps) in 
+  (ps, inline_exp env' e)
 
 let inline_declaration (env: exp Env.t) (d: declaration) =
   match d with
