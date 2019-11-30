@@ -44,6 +44,9 @@ let env_to_smt ?(verbose=false) ?(name_asserts=false) info (env : smt_env) =
   let decls = StringMap.bindings env.type_decls in
   let decls = String.concat "\n"
       (BatList.map (fun (_,typ) -> type_decl_to_smt typ) decls) in
+  Printf.printf "***YUE decls: %s\n" decls;
+  Printf.printf "***YUE constants: %s\n" constants;
+  Printf.printf "***YUE context: %s\n" context;
   Printf.sprintf "(push)%s\n %s\n %s\n" decls constants context
 
 let check_sat info =
@@ -154,6 +157,7 @@ let solve info query chan net_or_srp nodes eassert requires =
     match smt_config.failures with
     | None ->
       let q = check_sat info in
+      Printf.printf "***YUE query is %s\n" q;
       print_and_ask q;
       let reply = solver |> parse_reply in
       get_sat query chan info env solver renaming nodes eassert reply
@@ -182,6 +186,7 @@ let solve info query chan net_or_srp nodes eassert requires =
 
 let solveClassic info query chan net =
   let open Nv_lang.Syntax in
+  Printf.printf "YUE smt_config.unboxing %b\n" smt_config.unboxing;
   let module ExprEnc = (val expr_encoding smt_config) in
   let module Enc =
     (val (module SmtClassicEncoding.ClassicEncoding(ExprEnc) : SmtClassicEncoding.ClassicEncodingSig))

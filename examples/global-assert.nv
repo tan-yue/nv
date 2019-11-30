@@ -1,0 +1,64 @@
+(* An example of an assert which talks
+ * about multiple solutions at once,
+ * which is currently inexpressible
+ * in NV.
+ *)
+
+type attribute = int
+
+let nodes = 3
+
+let edges = {
+  0=1;
+  0=2;
+  1=2;
+}
+
+
+let min x y = if x < y then x else y
+
+let merge node x y = min x y
+
+let add1 x = x + 1
+
+let trans edge x = add1 x
+
+let init node = match node with
+  | 0n -> 1
+  | 1n -> 10
+  | 2n -> 20
+
+(* Here's an assert we might want to write,
+ * that says that the solution at node 1
+ * is the same as the solution at node 0
+ * after applying the merge and the transfer
+ * function to node 1's init value.
+ * (Essentially this just restates how node 1's
+ * solution is computed, but emphasizes that
+ * the solution at node 2 was not used).
+ * The parameter nodes represents an associative
+ * array (aka a map) where the keys are nodes in
+ * the SRP and the values are the corresponding
+ * solutions at those nodes
+ *)
+(*let assert nodes =
+*  let soln_0 = nodes[0n] in
+*  let soln_1 = nodes[1n] in
+*  (* this single equals sign is boolean, not assignment *)
+*  (* we use min and add1 instead of merge and trans due
+*   * to a limitation of NV: the actual merge and trans
+*   * functions are special and we can't refer to them
+*   * elsewhere
+*   *)
+*  soln_1 = min (10 (add1 (soln_0)))
+*)
+(* NOTE: this won't compile, since NV expects assert to have the
+ * form "TNode -> ATy -> Bool"
+ *)
+
+let assert node x = 
+  x = 1 || x = 2
+(*  match node with
+ *  | 0n -> x = 0
+ *   | _ -> x = 1
+*)

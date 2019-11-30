@@ -15,6 +15,7 @@ sig
     -> string -> sort -> term
   val lift1: ('a -> 'b) -> 'a t -> 'b t
   val lift2: ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
+  val print_term_list: (term t) -> unit
   val to_list : 'a t -> 'a list
   val of_list : 'a list -> 'a t
   val combine_term: term t -> term

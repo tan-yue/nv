@@ -70,6 +70,7 @@ let run_smt_func file cfg info net fs =
         Success (Some solution), fs
 
 let run_smt_classic file cfg info (net : Syntax.network) fs =
+  Printf.printf "YUE enter run_smt_classic %s\n" file;
   let net, fs =
     SmtUtils.smt_config.unboxing <- true;
     let net, f1 = Profile.time_profile "Unbox options" (fun () -> UnboxOptions.unbox_net net) in
@@ -89,6 +90,7 @@ let run_smt_classic file cfg info (net : Syntax.network) fs =
       if cfg.hiding then
         (SmtHiding.solve_hiding ~starting_vars:[] ~full_chan:(smt_query_file file))
       else
+        let () = Printf.printf "YUE enter Smt.solveClassic\n" in
         Smt.solveClassic
     in
     match solve_fun info cfg.query (smt_query_file file) net with
@@ -166,6 +168,7 @@ let run_smt_classic file cfg info (net : Syntax.network) fs =
 ;;
 
 let run_smt file cfg info (net : Syntax.network) fs =
+  Printf.printf "YUE enter run_smt %s\n" file;
   (if cfg.finite_arith then
      SmtUtils.smt_config.infinite_arith <- false);
   (if cfg.smt_parallel then

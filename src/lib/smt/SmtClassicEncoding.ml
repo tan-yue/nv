@@ -129,9 +129,11 @@ struct
     results
 
   let encode_z3_assert str env _node assertion =
+    Printf.printf "***YUE encode_z3_assert called with str=%s\n" str;
     let rec loop assertion acc =
       match assertion.e with
       | EFun {arg= x; argty= Some xty; body= exp; _} ->
+        Printf.printf "***YUE arg : %s\n" (Var.to_string x);
         (match exp.e with
          | EFun _ ->
            loop exp ((x,xty) :: acc)
@@ -144,6 +146,7 @@ struct
            let results =
              lift2 (mk_constant env) names (oget exp.ety |> ty_to_sorts) in
            let es = encode_exp_z3 str env exp in
+           print_term_list es;
            ignore(lift2 (fun e result ->
                SmtUtils.add_constraint env (mk_term (mk_eq result.t e.t))) es results);
            (results, xstr))
@@ -255,6 +258,7 @@ struct
     ( match eassert with
       | None -> ()
       | Some eassert ->
+        Printf.printf "***YUE encoding assertions...\n";
         let all_good = ref (mk_bool true) in
         for i = 0 to nodes - 1 do
           let label = labelling.(i) in

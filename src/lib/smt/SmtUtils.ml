@@ -521,6 +521,7 @@ let mk_constant (env : smt_env) ?(cdescr = "") ?(cloc = Span.default) cname csor
   (mk_var cname) |> (mk_term ~tdescr:cdescr ~tloc:cloc)
 
 let add_constraint (env : smt_env) (c : term) =
+  (*Printf.printf "YUE SmtUtils.add_constraint %s\n" c.tdescr;*)
   env.ctx <- (mk_assert c |> mk_command) :: env.ctx
 
 let is_symbolic syms x =

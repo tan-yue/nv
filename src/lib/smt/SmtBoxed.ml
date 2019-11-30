@@ -12,6 +12,7 @@ struct
   type 'a t = 'a
   let lift1 f s = f s
   let lift2 f x y = f x y
+  let print_term_list _ = ()
   let combine_term t = t
 
   let create_strings str _ = str
