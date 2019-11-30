@@ -51,6 +51,7 @@ struct
   let of_list x = x
 
   let add_symbolic (env : smt_env) (b: Var.t list) (ety: Syntax.ty_or_exp) =
+    BatList.iter (fun b_ ->  Printf.printf "***YUE symbol : %s\n" (Var.to_string b_)) b;
     match ety with
     | Ty ty ->
       (match ty with

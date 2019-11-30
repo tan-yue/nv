@@ -339,7 +339,9 @@ let parse_input (args : string array) =
   let cfg = Cmdline.get_cfg () in
   if cfg.debug then Printexc.record_backtrace true ;
   let file = rest.(0) in
+  Printf.printf "***YUE call Input.parse\n";
   let ds, info = Input.parse file in (* Parse nv file *)
+  Printf.printf "***YUE finish Input.parse\n";
   let decls = ds in
   (* print_endline @@ Printing.declarations_to_string decls ; *)
   let decls = (ToEdge.toEdge_decl decls) :: decls in
@@ -372,6 +374,7 @@ let parse_input (args : string array) =
     else decls, fs
   in
   let net = Slicing.createNetwork decls in (* Create something of type network *)
+    Printf.printf "***YUE createNetwork\n";
     let net =
       if cfg.link_failures > 0 then
         Failures.buildFailuresNet net cfg.link_failures
