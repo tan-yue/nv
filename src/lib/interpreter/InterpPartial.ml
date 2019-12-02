@@ -279,7 +279,8 @@ let rec interp_exp_partial isapp env e =
     if isapp then
       e
     else
-      aexp (efun {f with body = interp_exp_partial false env f.body}, e.ety, e.espan)
+      (Printf.printf "***YUE interp_exp_partial EFun : %s\n" (Nv_lang.Printing.exp_to_string e);
+      aexp (efun {f with body = interp_exp_partial false env f.body}, e.ety, e.espan))
   | EApp (e1, e2) ->
     let pe1 = interp_exp_partial true env e1 in
     let pe2 = interp_exp_partial false env e2 in
@@ -329,7 +330,11 @@ let rec interp_exp_partial isapp env e =
   | ERecord _ | EProject _ -> failwith "Record found during partial interpretation"
 
 and interp_op_partial env op es =
+  Printf.printf "***YUE interp_op_partial op : %s\n" (Nv_lang.Printing.op_to_string op);
+  Printf.printf "***YUE interp_op_partial es :\n%s***\n" (Nv_lang.Printing.exps_to_string es);
   let pes = BatList.map (interp_exp_partial false env) es in
+  let open Nv_lang.Printing in
+  (* Printf.printf "***YUE pes : %s\n" (exps_to_string pes); *)
   if BatList.exists (fun pe -> not (is_value pe)) pes then
   (*   simplify_exps op pes
    * else
@@ -389,5 +394,8 @@ let interp_partial_opt =
 (* let interp_partial_opt = MemoizeExp.memoize ~size:1000 interp_partial_opt *)
 
 let interp_partial_fun (fn : Nv_lang.Syntax.exp) (args: value list) =
-  Nv_lang.Syntax.apps fn (List.map (fun a -> e_val a) args) |>
-  interp_partial
+  (* Nv_lang.Syntax.apps fn (List.map (fun a -> e_val a) args) |>
+  interp_partial *)
+  let e = Nv_lang.Syntax.apps fn (List.map (fun a -> e_val a) args) in
+  Printf.printf "***YUE Nv_lang.Syntax.apps e : %s\n" (Nv_lang.Printing.exp_to_string e);
+  interp_partial e

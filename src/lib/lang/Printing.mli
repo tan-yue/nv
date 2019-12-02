@@ -13,6 +13,7 @@ val value_to_string : Syntax.value -> string
 val pattern_to_string : Syntax.pattern -> string
 
 val exp_to_string : Syntax.exp -> string
+val exps_to_string : Syntax.exp list -> string
 
 val func_to_string : Syntax.func -> string
 

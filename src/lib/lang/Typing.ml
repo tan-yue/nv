@@ -23,7 +23,8 @@ let merge_ty aty = TArrow (node_ty, TArrow (aty, TArrow (aty, aty)))
 
 let trans_ty aty = TArrow (edge_ty, TArrow (aty, aty))
 
-let assert_ty aty = TArrow (node_ty, TArrow (aty, TBool))
+(* let assert_ty aty = TArrow (node_ty, TArrow (aty, TBool)) *)
+let assert_ty aty = TArrow (TMap(node_ty, aty), TBool)
 
 (* TODO: do we want a special partition ID type? is i8 a sensible number? *)
 (* partitioning *)
@@ -306,6 +307,7 @@ let inst_schema (names, ty) =
   (inst subst ty, tys)
 
 let substitute (ty: ty) : ty =
+  Printf.printf "***YUE substitute : %s\n" (Printing.ty_to_string ty);
   let map = ref Env.empty in
   let rec substitute_aux ty =
     match ty with
@@ -372,6 +374,8 @@ let rec infer_exp i info env (e: exp) : exp =
     | EOp (o, es) -> (
         match (o, es) with
         | MGet, [e1; e2] ->
+          Printf.printf "***YUE MGet e1 : EVar %s\n" (Printing.exp_to_string e1);
+          Printf.printf "***YUE MGet e2 : EVal %s\n" (Printing.exp_to_string e2);
           let e1, mapty =
             infer_exp (i + 1) info env e1 |> textract
           in
@@ -379,7 +383,10 @@ let rec infer_exp i info env (e: exp) : exp =
             infer_exp (i + 1) info env e2 |> textract
           in
           let valty = fresh_tyvar () in
+          Printf.printf "***YUE mapty %s\n" (Printing.ty_to_string mapty);
+          Printf.printf "***YUE keyty %s\n" (Printing.ty_to_string keyty);
           unify info e mapty (TMap (keyty, valty)) ;
+          Printf.printf "***YUE valty %s\n" (Printing.ty_to_string valty);
           texp (eop o [e1; e2], valty, e.espan)
         | MSet, [e1; e2; e3] ->
           let e1, mapty =
@@ -536,9 +543,14 @@ let rec infer_exp i info env (e: exp) : exp =
           Console.error_position info e.espan
             (Printf.sprintf "invalid number of parameters")
         | Eq, [e1; e2] ->
+          Printf.printf "***YUE Eq e1 : %s\n" (Printing.exp_to_string e1);
+          Printf.printf "***YUE Eq e2 : %s\n" (Printing.exp_to_string e2);
           let e1, ty1 = infer_exp (i + 1) info env e1 |> textract in
+          Printf.printf "***YUE Eq e1 resolved\n";
           let e2, ty2 = infer_exp (i + 1) info env e2 |> textract in
+          Printf.printf "***YUE Eq e2 resolved\n";
           unify info e ty1 ty2 ;
+          Printf.printf "***YUE Eq pass\n";
           texp (eop o [e1; e2], TBool, e.espan)
         | _ ->
           let argtys, resty = op_typ o in
@@ -546,6 +558,14 @@ let rec infer_exp i info env (e: exp) : exp =
           unifies info e argtys tys ;
           texp (eop o es, resty, e.espan) )
     | EFun {arg= x; argty; resty; body} ->
+      Printf.printf "***YUE EFun arg : %s\n" (Var.to_string x);
+      Printf.printf "***YUE EFun body : %s\n" (Printing.exp_to_string body);
+      (match argty with
+      | Some t -> Printf.printf "***YUE EFun argty : %s\n" (Printing.ty_to_string t)
+      | None -> Printf.printf "***YUE EFun argty: none\n");
+      (match resty with
+      | Some t -> Printf.printf "***YUE EFun resty : %s\n" (Printing.ty_to_string t)
+      | None -> Printf.printf "***YUE EFun resty: none\n");
       let ty_x = fresh_tyvar () in
       let e, ty_e =
         infer_exp (i + 1) info (Env.update env x ty_x) body
@@ -558,10 +578,14 @@ let rec infer_exp i info env (e: exp) : exp =
         , TArrow (ty_x, ty_e)
         , e.espan )
     | EApp (e1, e2) ->
+      Printf.printf "***YUE EApp e1 : %s\n" (Printing.exp_to_string e1);
+      Printf.printf "***YUE EApp e2 : %s\n" (Printing.exp_to_string e2);
       let e1, ty_fun = infer_exp (i + 1) info env e1 |> textract in
       let e2, ty_arg = infer_exp (i + 1) info env e2 |> textract in
       let ty_res = fresh_tyvar () in
+      Printf.printf "***YUE EApp fresh ty_res : %s\n" (Printing.ty_to_string ty_res);
       unify info e ty_fun (TArrow (ty_arg, ty_res)) ;
+      Printf.printf "***YUE EApp unified ty_res : %s\n" (Printing.ty_to_string ty_res);
       texp (eapp e1 e2, ty_res, e.espan)
     | EIf (e1, e2, e3) ->
       let e1, tcond = infer_exp (i + 1) info env e1 |> textract in
@@ -571,12 +595,16 @@ let rec infer_exp i info env (e: exp) : exp =
       unify info e ty2 ty3 ;
       texp (eif e1 e2 e3, ty2, e.espan)
     | ELet (x, e1, e2) ->
+      Printf.printf "***YUE Elet e1 : %s\n" (Printing.exp_to_string e1);
+      Printf.printf "***YUE Elet e2 : %s\n" (Printing.exp_to_string e2);
       (* TO DO? Could traverse the term e1 again replacing TVars with QVars of the same name.
          Did not do this for now. *)
       enter_level () ;
       let e1, ty_e1 = infer_exp (i + 1) info env e1 |> textract in
       leave_level () ;
+      Printf.printf "***YUE ty_e1 : %s\n" (Printing.ty_to_string ty_e1);
       let ty = generalize ty_e1 in
+      Printf.printf "***YUE ty : %s\n" (Printing.ty_to_string ty);
       let e2, ty_e2 =
         infer_exp (i + 1) info (Env.update env x ty) e2 |> textract
       in
@@ -823,6 +851,7 @@ and infer_declarations i info (ds: declarations) : declarations =
 
 and infer_declarations_aux i info env aty (ds: declarations) :
   declarations =
+  Printf.printf "***YUE aux level : %d\n" i;
   match ds with
   | [] -> []
   | d :: ds' ->
@@ -830,6 +859,8 @@ and infer_declarations_aux i info env aty (ds: declarations) :
     d' :: infer_declarations_aux (i + 1) info env' aty ds'
 
 and infer_declaration i info env aty d : ty Env.t * declaration =
+  Printf.printf "***YUE level : %d\n" i;
+  Printf.printf "***YUE declaration : %s\n" (Printing.declaration_to_string d);
   let open Nv_utils.OCamlUtils in
   match d with
   | DLet (x, _, e1) ->
@@ -860,7 +891,9 @@ and infer_declaration i info env aty d : ty Env.t * declaration =
     unify info e ty (trans_ty aty) ;
     (Env.update env (Var.create "trans") ty, DTrans e')
   | DAssert e ->
+    Printf.printf "***YUE DAssert : %s\n" (Printing.exp_to_string e);
     let e' = infer_exp (i + 1) info env e in
+    Printf.printf "***YUE DAssert pass\n";
     let ty = oget e'.ety in
     unify info e ty (assert_ty aty) ;
     (Env.update env (Var.create "assert") ty, DAssert e')
@@ -979,6 +1012,7 @@ let rec equiv_tys ty1 ty2 =
 ;;
 
 let infer_declarations info (ds: declarations) : declarations =
+  Printf.printf "***YUE declarations :\n%s" (Printing.declarations_to_string ds);
   match get_attr_type ds with
   | None ->
     Console.error

@@ -186,7 +186,6 @@ let solve info query chan net_or_srp nodes eassert requires =
 
 let solveClassic info query chan net =
   let open Nv_lang.Syntax in
-  Printf.printf "YUE smt_config.unboxing %b\n" smt_config.unboxing;
   let module ExprEnc = (val expr_encoding smt_config) in
   let module Enc =
     (val (module SmtClassicEncoding.ClassicEncoding(ExprEnc) : SmtClassicEncoding.ClassicEncodingSig))

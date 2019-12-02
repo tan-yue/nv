@@ -80,11 +80,16 @@ let run_smt_classic file cfg info (net : Syntax.network) fs =
     net, (f2 :: f1 :: fs)
   in
   (* let net = {net with trans = InterpPartial.interp_partial net.trans} in*)
-  (* Printf.printf "%s\n" (Printing.network_to_string net); *)
+  Printf.printf "***YUE %s\n" (match net.assertion with
+  | Some e -> Printing.exp_to_string e
+  | None -> "none");
   let net, f = Renaming.alpha_convert_net net in (*TODO: why are we renaming here?*)
   let fs = f :: fs in
   let net, _ = OptimizeBranches.optimize_net net in (* The _ should match the identity function *)
   let net = Profile.time_profile "Partially Evaluating Network" (fun () -> partialEvalNet net) in
+  Printf.printf "***YUE %s\n" (match net.assertion with
+  | Some e -> Printing.exp_to_string e
+  | None -> "none");
   let get_answer net fs =
     let solve_fun =
       if cfg.hiding then
@@ -341,11 +346,12 @@ let parse_input (args : string array) =
   let file = rest.(0) in
   Printf.printf "***YUE call Input.parse\n";
   let ds, info = Input.parse file in (* Parse nv file *)
-  Printf.printf "***YUE finish Input.parse\n";
+  Printf.printf "***YUE finish Input.parse : ds\n%s" (Printing.declarations_to_string ds);
   let decls = ds in
   (* print_endline @@ Printing.declarations_to_string decls ; *)
   let decls = (ToEdge.toEdge_decl decls) :: decls in
   let decls = Typing.infer_declarations info decls in
+  Printf.printf "***YUE infer_declarations finish decls :\n%s\n" (Printing.declarations_to_string decls);
   Typing.check_annot_decls decls ;
   Wellformed.check info decls ;
   let decls, f = RecordUnrolling.unroll_declarations decls in
@@ -374,7 +380,9 @@ let parse_input (args : string array) =
     else decls, fs
   in
   let net = Slicing.createNetwork decls in (* Create something of type network *)
-    Printf.printf "***YUE createNetwork\n";
+    Printf.printf "***YUE createNetwork finish net.assertions :\n%s\n" (match net.assertion with
+    | Some e -> Printing.exp_to_string e
+    | None -> "none");
     let net =
       if cfg.link_failures > 0 then
         Failures.buildFailuresNet net cfg.link_failures

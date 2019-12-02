@@ -286,6 +286,12 @@ let value_to_string v = value_to_string_p max_prec v
 
 let exp_to_string e = exp_to_string_p max_prec e
 
+let rec exps_to_string es =
+  match es with
+  | [] -> ""
+  | e :: es ->
+    exp_to_string e ^ "\n" ^ exps_to_string es
+
 let func_to_string f = func_to_string_p max_prec f
 
 let closure_to_string c = closure_to_string_p max_prec c

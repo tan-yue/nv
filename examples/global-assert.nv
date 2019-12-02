@@ -24,9 +24,10 @@ let add1 x = x + 1
 let trans edge x = add1 x
 
 let init node = match node with
-  | 0n -> 1
+  | 0n -> 0
   | 1n -> 10
   | 2n -> 20
+  (* | 3n -> 30 *)
 
 (* Here's an assert we might want to write,
  * that says that the solution at node 1
@@ -41,26 +42,29 @@ let init node = match node with
  * the SRP and the values are the corresponding
  * solutions at those nodes
  *)
+ 
 let assert solns =
   let soln_0 = solns[0n] in
   let soln_1 = solns[1n] in
-  
+  soln_1 = min 10 (add1 soln_0)
+
   (* this single equals sign is boolean, not assignment *)
   (* we use min and add1 instead of merge and trans due
    * to a limitation of NV: the actual merge and trans
    * functions are special and we can't refer to them
    * elsewhere
    *)
-  soln_1 = min (10 (add1 (soln_0)))
+
+  (* soln_0 = 1 *)
   
 (* NOTE: this won't compile, since NV expects assert to have the
  * form "TNode -> ATy -> Bool"
  *)
 
-(*let assert node x = 
- * x = 1 || x = 2
-*)
-(*  match node with
+(* let assert node x = 
+ x = 0 || x = 1 *)
+
+ (* let assert node x = 
+ match node with
  *  | 0n -> x = 0
- *   | _ -> x = 1
-*)
+ *   | _ -> x = 1 *)
