@@ -129,35 +129,70 @@ struct
     results
 
   let encode_z3_assert str env _node assertion =
-    Printf.printf "***YUE encode_z3_assert assertion : %s\n" (Nv_lang.Printing.exp_to_string assertion);
+    Printf.printf "***YUE encode_z3_assert***\n";
+    Printf.printf "parameter str:\n%s\n===\n" str;
+    Printf.printf "parameter assertion:\n%s\n===\n" (Nv_lang.Printing.exp_to_string assertion);
     let rec loop assertion acc =
       match assertion.e with
       | EFun {arg= x; argty= Some xty; body= exp; _} ->
-        Printf.printf "***YUE arg : %s ; xty : %s\n" (Var.to_string x) (Nv_lang.Printing.ty_to_string xty);
+        Printf.printf "arg is %s of type %s\n===\n" (Var.to_string x) (Nv_lang.Printing.ty_to_string xty);
         (match exp.e with
-         | EFun _ ->
-           loop exp ((x,xty) :: acc)
-         | _ ->
-           let xstr = BatList.rev_map (fun (x,xty) ->
-               mk_constant env (create_vars env str x) (SmtUtils.ty_to_sort xty)
-                 ~cdescr:"assert x argument" ~cloc:assertion.espan )
-               ((x,xty) :: acc) in
-           let names = create_strings (Printf.sprintf "%s-result" str) (oget exp.ety) in
-           let results =
-             lift2 (mk_constant env) names (oget exp.ety |> ty_to_sorts) in
-           let es = encode_exp_z3 str env exp in
-           (* print_term_list es; *)
-           ignore(lift2 (fun e result ->
-               SmtUtils.add_constraint env (mk_term (mk_eq result.t e.t))) es results);
-           (* print_term_list results; *)
-           print_term_list (of_list xstr);
-           (results, xstr))
+          | EFun _ ->
+            loop exp ((x,xty) :: acc)
+          | _ ->
+            Printf.printf "reach the base case\n";
+            let xstr = BatList.rev_map (fun (x,xty) ->
+                mk_constant env (create_vars env str x) (SmtUtils.ty_to_sort xty)
+                  ~cdescr:"assert x argument" ~cloc:assertion.espan )
+                  ((x,xty) :: acc) in
+            Printf.printf "xstr:";
+            print_term_list (of_list xstr);
+            (* exp.ety is bool *)
+            let names = create_strings (Printf.sprintf "%s-result" str) (oget exp.ety) in
+            Printf.printf "names:[ ";
+            List.iter (fun name -> (Printf.printf "%s " name)) (to_list names);
+            Printf.printf "]\n";
+            let results =
+              lift2 (mk_constant env) names (oget exp.ety |> ty_to_sorts) in
+            Printf.printf "results:";
+            print_term_list results;
+            let es = encode_exp_z3 str env exp in
+            Printf.printf "es:";
+            print_term_list es;
+            ignore(lift2 (fun e result ->
+              SmtUtils.add_constraint env (mk_term (mk_eq result.t e.t))) es results);
+            (results, xstr))
       | _ -> failwith "internal error"
     in
     loop assertion []
 
-  let encode_z3_assert_modified str env assertion = 
-    ()
+  let encode_z3_assert_global env assertion =
+    let str = "assert" in
+    let rec loop assertion acc =
+      match assertion.e with
+      | EFun {arg= x; argty= Some xty; body= exp; _} ->
+        (match exp.e with
+        | EFun _ ->
+          loop exp ((x,xty) :: acc)
+        | _ ->
+          let xstr = BatList.rev_map (fun (x,xty) ->
+              mk_constant env (create_vars env str x) (SmtUtils.ty_to_sort xty)
+                ~cdescr:"assert x argument" ~cloc:assertion.espan)
+              ((x,xty) :: acc) in
+          (* Printf.printf "xstr:";
+          print_term_list (of_list xstr); *)
+          let names = create_strings (Printf.sprintf "%s-result" str) (oget exp.ety) in
+          let results =
+            lift2 (mk_constant env) names (oget exp.ety |> ty_to_sorts) in
+          let es = encode_exp_z3 str env exp in
+          (* Printf.printf "es:";
+          print_term_list es; *)
+          ignore(lift2 (fun e result ->
+              SmtUtils.add_constraint env (mk_term (mk_eq result.t e.t))) es results);
+          (results, xstr))
+      | _ -> failwith "internal error"
+    in
+    loop assertion []    
 
   let encode_z3 (net: Syntax.network) : SmtUtils.smt_env =
     let env = init_solver net.symbolics ~labels:[] in
@@ -260,38 +295,48 @@ struct
              SmtUtils.add_constraint env (mk_term (mk_eq label.t x.t))) (to_list label) x)
       !trans_input_map ;
     (* add assertions at the end *)
-    ( match eassert with
+    (* ( match eassert with
       | None -> ()
       | Some eassert ->
         let open Nv_lang.Printing in
         Printf.printf "***YUE encoding assertions :\n%s\n***\n" (exp_to_string eassert);
         let all_good = ref (mk_bool true) in
         for i = 0 to nodes - 1 do
-          (* let rec create_labels labels j=
-            if j == nodes then []
-            else if j != i then (List.hd (to_list labels.(j)))::(create_labels labels (j+1))
-            else (create_labels labels (j+1))
-          in
-          let labels = create_labels labelling 0 in *)
           let label = labelling.(i) in
-          (* print_term_list label; *)
           let node = avalue (vnode i, Some Typing.node_ty, Span.default) in
           let eassert_i = InterpPartial.interp_partial_fun eassert [node] in
           let result, x =
             encode_z3_assert (SmtUtils.assert_var i) env i eassert_i
           in
-          (* Printf.printf "***YUE x len : %d ; label len : %d\n" (List.length x) (List.length labels); *)
-          Printf.printf "***YUE x len : %d ; label len : %d\n" (List.length x) (List.length (to_list label));
+          Printf.printf "labels:";
+          print_term_list label;
           BatList.iter2 (fun x label ->
               SmtUtils.add_constraint env (mk_term (mk_eq x.t label.t))) x (to_list label);
-              (* SmtUtils.add_constraint env (mk_term (mk_eq x.t label.t))) x labels; *)
           let assertion_holds =
             lift1 (fun result -> mk_eq result.t (mk_bool true) |> mk_term) result
             |> combine_term in
           all_good :=
             mk_and !all_good assertion_holds.t
         done ;
-        SmtUtils.add_constraint env (mk_term (mk_not !all_good)));
+        SmtUtils.add_constraint env (mk_term (mk_not !all_good))); *)
+    (match eassert with
+      | None -> ()
+      | Some eassert ->
+        let all_good = ref (mk_bool true) in
+        (* fun solns-proj-0 -> fun solns-proj-1 -> fun solns-proj-2 -> ...
+         * cannot be partially interpreted
+         * since each node's stable solution is unknown
+         *)
+        let result, x = encode_z3_assert_global env eassert in
+        let labels = Array.to_list (Array.init nodes (fun i -> (List.hd (to_list labelling.(i))))) in
+        BatList.iter2 (fun x label ->
+            SmtUtils.add_constraint env (mk_term (mk_eq x.t label.t))) x labels;
+        let assertion_holds =
+          lift1 (fun result -> mk_eq result.t (mk_bool true) |> mk_term) result
+          |> combine_term in
+        all_good := mk_and !all_good assertion_holds.t;
+        SmtUtils.add_constraint env (mk_term (mk_not !all_good))
+    );
     (* add the symbolic variable constraints *)
     add_symbolic_constraints env net.requires (env.symbolics (*@ sym_vars*));
     env

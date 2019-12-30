@@ -6,7 +6,6 @@ let main_func () =
 let cfg, info, file, net, fs = parse_input Sys.argv in
   (* if cfg.check_monotonicity then *)
   (*   checkPolicy info cfg file decls; *)
-Printf.printf "YUE %s\n" file;
   let networkOp =
       if cfg.smt then run_smt file
       else if cfg.random_test then run_test

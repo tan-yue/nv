@@ -21,8 +21,10 @@ struct
   let lift2 (f: 'a -> 'b -> 'c) (zes1 : 'a list) (zes2: 'b list) =
     BatList.map2 (fun ze1 ze2 -> f ze1 ze2) zes1 zes2
 
-  let print_term_list (es : term list) =
-    BatList.iter (fun e -> Printf.printf "***YUE term : %s\n" (smt_term_to_smt e.t)) es
+  let print_term_list (ts : term list) =
+    Printf.printf "[ ";
+    BatList.iter (fun t -> Printf.printf "%s " (smt_term_to_smt t.t)) ts;
+    Printf.printf "]\n";
 
   exception False
 

@@ -262,6 +262,7 @@ and interp_op_partial_opt env expEnv _ op es =
     end
 
 let rec interp_exp_partial isapp env e =
+  (* Printf.printf "%s\n" (Env.to_string Nv_lang.Printing.value_to_string env.value); *)
   match e.e with
   | ETy (e, _) -> interp_exp_partial isapp env e
   | EVar x -> (
@@ -330,11 +331,11 @@ let rec interp_exp_partial isapp env e =
   | ERecord _ | EProject _ -> failwith "Record found during partial interpretation"
 
 and interp_op_partial env op es =
-  Printf.printf "***YUE interp_op_partial op : %s\n" (Nv_lang.Printing.op_to_string op);
-  Printf.printf "***YUE interp_op_partial es :\n%s***\n" (Nv_lang.Printing.exps_to_string es);
+  Printf.printf "***YUE interp_op_partial***\n";
+  Printf.printf "op:\n%s\n===\n" (Nv_lang.Printing.op_to_string op);
+  Printf.printf "es:\n%s===\n" (Nv_lang.Printing.exps_to_string es);
   let pes = BatList.map (interp_exp_partial false env) es in
-  let open Nv_lang.Printing in
-  (* Printf.printf "***YUE pes : %s\n" (exps_to_string pes); *)
+  Printf.printf "pes:\n%s===\n" (Nv_lang.Printing.exps_to_string pes);
   if BatList.exists (fun pe -> not (is_value pe)) pes then
   (*   simplify_exps op pes
    * else
