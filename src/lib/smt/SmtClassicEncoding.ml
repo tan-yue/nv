@@ -128,7 +128,7 @@ struct
         SmtUtils.add_constraint env (mk_term (mk_eq result.t e.t))) es results);
     results
 
-  let encode_z3_assert str env _node assertion =
+  (* let encode_z3_assert str env _node assertion =
     let rec loop assertion acc =
       match assertion.e with
       | EFun {arg= x; argty= Some xty; body= exp; _} ->
@@ -149,7 +149,31 @@ struct
            (results, xstr))
       | _ -> failwith "internal error"
     in
-    loop assertion []
+    loop assertion [] *)
+  
+  let encode_z3_assert env assertion =
+    let str = "assert" in
+    let rec loop assertion acc =
+      match assertion.e with
+      | EFun {arg= x; argty= Some xty; body= exp; _} ->
+        (match exp.e with
+        | EFun _ ->
+          loop exp ((x,xty) :: acc)
+        | _ ->
+          let xstr = BatList.rev_map (fun (x,xty) ->
+              mk_constant env (create_vars env str x) (SmtUtils.ty_to_sort xty)
+                ~cdescr:"assert x argument" ~cloc:assertion.espan)
+              ((x,xty) :: acc) in
+          let names = create_strings (Printf.sprintf "%s-result" str) (oget exp.ety) in
+          let results =
+            lift2 (mk_constant env) names (oget exp.ety |> ty_to_sorts) in
+          let es = encode_exp_z3 str env exp in
+          ignore(lift2 (fun e result ->
+              SmtUtils.add_constraint env (mk_term (mk_eq result.t e.t))) es results);
+          (results, xstr))
+      | _ -> failwith "internal error"
+    in
+    loop assertion []    
 
   let encode_z3 (net: Syntax.network) : SmtUtils.smt_env =
     let env = init_solver net.symbolics ~labels:[] in
@@ -252,7 +276,7 @@ struct
              SmtUtils.add_constraint env (mk_term (mk_eq label.t x.t))) (to_list label) x)
       !trans_input_map ;
     (* add assertions at the end *)
-    ( match eassert with
+    (* ( match eassert with
       | None -> ()
       | Some eassert ->
         let all_good = ref (mk_bool true) in
@@ -271,7 +295,25 @@ struct
           all_good :=
             mk_and !all_good assertion_holds.t
         done ;
-        SmtUtils.add_constraint env (mk_term (mk_not !all_good)));
+        SmtUtils.add_constraint env (mk_term (mk_not !all_good))); *)
+    (match eassert with
+      | None -> ()
+      | Some eassert ->
+        let all_good = ref (mk_bool true) in
+        (* fun solns-proj-0 -> fun solns-proj-1 -> fun solns-proj-2 -> ...
+         * cannot be partially interpreted
+         * since each node's stable solution is unknown
+         *)
+        let result, x = encode_z3_assert env eassert in
+        let labels = Array.to_list (Array.init nodes (fun i -> (List.hd (to_list labelling.(i))))) in
+        BatList.iter2 (fun x label ->
+            SmtUtils.add_constraint env (mk_term (mk_eq x.t label.t))) x labels;
+        let assertion_holds =
+          lift1 (fun result -> mk_eq result.t (mk_bool true) |> mk_term) result
+          |> combine_term in
+        all_good := mk_and !all_good assertion_holds.t;
+        SmtUtils.add_constraint env (mk_term (mk_not !all_good))
+    );
     (* add the symbolic variable constraints *)
     add_symbolic_constraints env net.requires (env.symbolics (*@ sym_vars*));
     env

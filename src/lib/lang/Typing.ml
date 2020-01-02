@@ -23,7 +23,8 @@ let merge_ty aty = TArrow (node_ty, TArrow (aty, TArrow (aty, aty)))
 
 let trans_ty aty = TArrow (edge_ty, TArrow (aty, aty))
 
-let assert_ty aty = TArrow (node_ty, TArrow (aty, TBool))
+(* let assert_ty aty = TArrow (node_ty, TArrow (aty, TBool)) *)
+let assert_ty aty = TArrow (TMap(node_ty, aty), TBool)
 
 (* TODO: do we want a special partition ID type? is i8 a sensible number? *)
 (* partitioning *)
