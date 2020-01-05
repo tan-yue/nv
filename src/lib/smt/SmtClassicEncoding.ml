@@ -299,21 +299,16 @@ struct
     (match eassert with
       | None -> ()
       | Some eassert ->
-        let all_good = ref (mk_bool true) in
         (* fun solns-proj-0 -> fun solns-proj-1 -> fun solns-proj-2 -> ...
          * cannot be partially interpreted
          * since each node's stable solution is unknown
          *)
         let result, x = encode_z3_assert env eassert in
+        let result = List.hd (to_list result) in
         let labels = Array.to_list (Array.init nodes (fun i -> (List.hd (to_list labelling.(i))))) in
         BatList.iter2 (fun x label ->
             SmtUtils.add_constraint env (mk_term (mk_eq x.t label.t))) x labels;
-        let assertion_holds =
-          lift1 (fun result -> mk_eq result.t (mk_bool true) |> mk_term) result
-          |> combine_term in
-        all_good := mk_and !all_good assertion_holds.t;
-        SmtUtils.add_constraint env (mk_term (mk_not !all_good))
-    );
+        SmtUtils.add_constraint env (mk_term (mk_eq result.t (mk_bool false))));
     (* add the symbolic variable constraints *)
     add_symbolic_constraints env net.requires (env.symbolics (*@ sym_vars*));
     env
